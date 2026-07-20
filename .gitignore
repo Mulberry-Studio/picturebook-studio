@@ -4,6 +4,9 @@
 !/.nojekyll
 !/README.md
 !/index.html
+!/.github/
+!/.github/workflows/
+!/.github/workflows/pages.yml
 !/year-book/
 /year-book/*
 !/year-book/book_app.html
