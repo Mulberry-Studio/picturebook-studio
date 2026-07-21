@@ -823,7 +823,16 @@
       top: -34px;
       transform: none;
     }
-  .page-meta { max-width: 720px; margin: 14px 26px 0; display: flex; flex-direction: column; gap: 8px; }
+  .page-meta {
+    max-width: 720px;
+    margin: -76px 34px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    position: relative;
+    z-index: 1100;
+    pointer-events: auto;
+  }
   .drawing-layer {
     position: absolute; inset: 0; width: 100%; height: 100%; z-index: 180; pointer-events: none; overflow: visible;
   }
@@ -1245,26 +1254,43 @@
     position: relative;
   }
   html[data-layout-mode="tablet"] .page-nav {
-    position: absolute;
-    top: 10px;
-    right: 34px;
-    z-index: 1200;
+    position: fixed;
+    left: max(12px, env(safe-area-inset-left));
+    right: max(12px, env(safe-area-inset-right));
+    bottom: calc(12px + env(safe-area-inset-bottom));
+    top: auto;
+    z-index: 2550;
     display: flex;
     flex-wrap: nowrap;
-    max-width: calc(100vw - var(--photo-library-width, 224px) - 92px);
+    justify-content: center;
+    max-width: none;
+    width: auto;
     padding: 7px;
     border-radius: 14px;
     background: rgba(255,250,241,.74);
     border: 1px solid rgba(155,126,91,.28);
     box-shadow: 0 12px 24px rgba(91,62,35,.10);
     backdrop-filter: blur(8px);
-    overflow-x: auto;
+    overflow-x: visible;
     margin: 0;
   }
   html[data-layout-mode="tablet"] .page-nav .page-type-badge,
   html[data-layout-mode="tablet"] .page-nav .page-jump,
   html[data-layout-mode="tablet"] .page-nav > span {
     display: none;
+  }
+  html[data-layout-mode="tablet"] .preview-3d .page-nav {
+    position: static;
+    left: auto;
+    right: auto;
+    bottom: auto;
+    top: auto;
+    z-index: auto;
+    width: auto;
+    max-width: none;
+    justify-content: flex-start;
+    overflow-x: auto;
+    margin-bottom: 6px;
   }
   html[data-layout-mode="tablet"] .page-wrap {
     padding: 22px 14px;
@@ -1295,7 +1321,32 @@
   html[data-layout-mode="tablet"] .photo-library {
     min-width: 168px;
     max-width: 42vw;
+    position: sticky;
+    top: 146px;
+    transform: none !important;
+    align-self: start;
+    max-height: calc(100vh - 164px);
     touch-action: none;
+  }
+  html[data-layout-mode="tablet"] .toolbar-popover .popover-body,
+  html[data-layout-mode="tablet"] .ai-assistant-body {
+    position: fixed;
+    left: max(14px, env(safe-area-inset-left));
+    right: max(14px, env(safe-area-inset-right));
+    top: 102px;
+    bottom: auto;
+    width: auto;
+    min-width: 0;
+    max-width: none;
+    max-height: calc(100vh - 132px);
+    overflow: auto;
+    z-index: 3200;
+  }
+  html[data-layout-mode="tablet"] .page-nav .toolbar-popover .popover-body,
+  html[data-layout-mode="tablet"] .page-nav .ai-assistant-body {
+    top: auto;
+    bottom: calc(76px + env(safe-area-inset-bottom));
+    max-height: min(70vh, 520px);
   }
   html[data-layout-mode="tablet"] .tray-item {
     width: 68px;
@@ -1332,6 +1383,9 @@
   html[data-layout-mode="tablet"] .preview-3d.fullscreen .st-pageflip-book {
     width: min(98vw, 1540px);
     height: min(94vh, 1040px);
+  }
+  html[data-layout-mode="tablet"] .st-pageflip-book {
+    pointer-events: none;
   }
 
   @media print {
@@ -4519,6 +4573,9 @@ pageLockBtn.addEventListener('click', () => {
 });
 
 addPageBtn.addEventListener('click', () => {
+    if (addPageBtn.dataset.busy === '1') return;
+    addPageBtn.dataset.busy = '1';
+    setTimeout(() => { delete addPageBtn.dataset.busy; }, 220);
     const contentIndexes = contentPageIndexes();
     let insertIdx = structuralBackInsertIndex();
     if (book.pages[currentPageIdx] && book.pages[currentPageIdx].type === 'content') {
@@ -4532,7 +4589,11 @@ addPageBtn.addEventListener('click', () => {
     book.pages.splice(insertIdx, 0, createEmptyPage('content'), createEmptyPage('content'));
     assignDefaultPageNumbers();
     goToPage(insertIdx);
-    hint.textContent = lang() === 'en' ? 'Added a pair of inner pages.' : '已成对增加 2 个内页。';
+    const addedPages = book.pages.slice(insertIdx, insertIdx + 2).map(page => page.pageNumber).filter(Boolean).join(lang() === 'en' ? '-' : ' 至 ');
+    const totalPages = contentPageCount();
+    hint.textContent = lang() === 'en'
+      ? `Added inner pages ${addedPages}; ${totalPages} inner pages total.`
+      : `已成对增加内页 ${addedPages}；当前共有 ${totalPages} 个内页。`;
     updateJsonView();
   });
   delPageBtn.addEventListener('click', () => {
@@ -5219,13 +5280,16 @@ function addPhotoToPage(page, photo, dropXFrac, dropYFrac) {
   const y = Math.max(-hFrac * 0.5, Math.min(1 - hFrac * 0.5, dropYFrac - hFrac / 2));
   const initial = { x, y, w: wFrac, h: hFrac, rotation: 0 };
   const crop = { scale: 1, offsetX: 0, offsetY: 0 };
+  const selectedFrame = photoFrameSelect.value || '';
+  const selectedShadow = photoShadowSelect.value || 'none';
   page.objects.push({
     id: 'obj' + (nextObjId++),
     photoId: photo._id,
     photoSnapshot: photoSnapshot(photo),
     ...initial,
     zIndex: maxZ + 1,
-    frame: PHOTO_FRAMES[page.objects.length % PHOTO_FRAMES.length],
+    frame: selectedFrame,
+    shadow: selectedShadow,
     crop,
     // 真正的"最初状态"快照，跟当前值分开存——之前"重置"按钮的问题就是没有这份快照，
     // 只重置了裁切参数，位置/大小/旋转已经被拖动改过的话，重置完看起来还是"半新不旧"的状态
@@ -6134,9 +6198,11 @@ function renderObject(page, obj) {
   img.src = photo.url;
   cropWrap.appendChild(img);
   if (!obj.crop) obj.crop = { scale: 1, offsetX: 0, offsetY: 0 };
-  const frame = document.createElement('div');
-  frame.className = 'photo-frame frame-' + (obj.frame || 'classic');
-  div.appendChild(frame);
+  if (obj.frame) {
+    const frame = document.createElement('div');
+    frame.className = 'photo-frame frame-' + obj.frame;
+    div.appendChild(frame);
+  }
 
   const controls = document.createElement('div');
   controls.className = 'slot-controls';
@@ -6886,9 +6952,11 @@ function createStaticPageElement(page, className = '') {
       requestAnimationFrame(apply);
     }
     div.appendChild(cropWrap);
-    const frameEl = document.createElement('div');
-    frameEl.className = 'photo-frame frame-' + (obj.frame || 'classic');
-    div.appendChild(frameEl);
+    if (obj.frame) {
+      const frameEl = document.createElement('div');
+      frameEl.className = 'photo-frame frame-' + obj.frame;
+      div.appendChild(frameEl);
+    }
     frame.appendChild(div);
   });
 
@@ -7370,18 +7438,24 @@ async function outputPrintFile() {
   const lightWarning = lightProjectPrintWarning();
   if (format === 'png') {
     await exportCurrentPagePng();
-    if (warning || lightWarning) hint.textContent = [warning, lightWarning].filter(Boolean).join(' ');
+    if (warning) hint.appendChild(document.createTextNode(' ' + warning));
     return;
   }
   buildPrintExport();
   await waitForImages(exportPages);
   await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
   const notes = {
-    pdf: lang() === 'en' ? 'Generated a standard PDF print view. Choose “Save as PDF” in the system print dialog.' : '已生成普通 PDF 打印视图；在系统打印窗口中选择“另存为 PDF”。',
-    pdfx1a: lang() === 'en' ? 'Generated a PDF/X-1a print view. Final PDF/X-1a still needs prepress conversion/validation: embedded fonts, CMYK, flattened transparency, bleed, and trim data.' : '已生成 PDF/X-1a 印刷视图。PDF/X-1a 仍需印前工具转换/校验：嵌入字体、CMYK、扁平化透明、加出血和裁切信息。',
-    pdfx4: lang() === 'en' ? 'Generated a PDF/X-4 print view. Final PDF/X-4 still needs prepress conversion/validation: embedded fonts, ICC color profile, preserved transparency, bleed, and trim data.' : '已生成 PDF/X-4 印刷视图。PDF/X-4 仍需印前工具转换/校验：嵌入字体、ICC 色彩配置、保留透明并加出血和裁切信息。',
+    pdf: lang() === 'en' ? 'PDF print view is ready. Choose “Save as PDF” in the system print dialog.' : '普通 PDF 打印视图已准备好；在系统打印窗口中选择“另存为 PDF”。',
+    pdfx1a: lang() === 'en' ? 'PDF/X-1a print view is ready. Final PDF/X-1a still needs prepress conversion/validation: embedded fonts, CMYK, flattened transparency, bleed, and trim data.' : 'PDF/X-1a 印刷视图已准备好。PDF/X-1a 仍需印前工具转换/校验：嵌入字体、CMYK、扁平化透明、加出血和裁切信息。',
+    pdfx4: lang() === 'en' ? 'PDF/X-4 print view is ready. Final PDF/X-4 still needs prepress conversion/validation: embedded fonts, ICC color profile, preserved transparency, bleed, and trim data.' : 'PDF/X-4 印刷视图已准备好。PDF/X-4 仍需印前工具转换/校验：嵌入字体、ICC 色彩配置、保留透明并加出血和裁切信息。',
   };
   hint.textContent = [notes[format] || notes.pdf, warning, lightWarning].filter(Boolean).join(' ');
+  if (uiState.layoutMode === 'tablet') {
+    hint.textContent += lang() === 'en'
+      ? ' On tablet, use the browser Share/Print command if automatic print is blocked.'
+      : ' 平板上如浏览器拦截自动打印，请使用浏览器分享/打印功能。';
+    return;
+  }
   window.print();
 }
 
@@ -7403,6 +7477,23 @@ function downloadUrl(url, filename) {
   document.body.appendChild(a);
   a.click();
   a.remove();
+}
+
+function offerExportDownload(url, filename, message) {
+  if (uiState.layoutMode !== 'tablet') {
+    downloadUrl(url, filename);
+    hint.textContent = message;
+    return;
+  }
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  link.textContent = lang() === 'en' ? 'Open / save PNG' : '打开 / 保存 PNG';
+  link.className = 'file-button';
+  link.style.marginLeft = '8px';
+  hint.textContent = '';
+  hint.appendChild(document.createTextNode(message + ' '));
+  hint.appendChild(link);
 }
 
   function drawImageCover(ctx, img, x, y, w, h) {
@@ -7635,11 +7726,10 @@ function downloadUrl(url, filename) {
         ctx.fillText(page.pageNumber, sourceWidth / 2, sourceHeight - 16);
       }
       await drawCanvasStudioLogo(ctx, page, sourceWidth, sourceHeight);
-      downloadUrl(canvas.toDataURL('image/png'), `yearbook-page-${currentPageIdx + 1}.png`);
-      hint.textContent = [
+      offerExportDownload(canvas.toDataURL('image/png'), `yearbook-page-${currentPageIdx + 1}.png`, [
         lang() === 'en' ? 'Exported the current page as a PNG.' : '已导出当前页单页 PNG。',
         lightProjectPrintWarning(),
-      ].filter(Boolean).join(' ');
+      ].filter(Boolean).join(' '));
     } catch (err) {
       console.error(err);
       hint.textContent = lang() === 'en' ? 'PNG export failed. Check whether all page images are still available.' : 'PNG 导出失败：请检查页面照片是否仍可读取。';
