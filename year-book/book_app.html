@@ -6,8 +6,8 @@
 <title>Mulberry Design Studio</title>
 <style>
   :root {
-    --bg: #f3eadb; --panel: #fffaf1; --line: #d8c9b3;
-    --workspace-bg: #f3eadb; --workspace-bg-soft: #fff7ea; --workspace-glow: rgba(52,120,126,.16);
+    --bg: #28140a; --panel: #fffaf1; --line: #d8c9b3;
+    --workspace-bg: #28140a; --workspace-bg-soft: #5e3d2c; --workspace-glow: rgba(52,120,126,.16);
     --text: #17130f; --muted: #3f352b; --field-text: #17130f; --field-muted: #4c4034;
     --readable-text-shadow: rgba(255,255,255,.45); --accent: #2f777d;
     --accent-strong: #235d62; --accent-soft: rgba(52,120,126,.13);
@@ -119,6 +119,7 @@
   .compact-toolbar .reset-popover { margin-left: 8px; }
   .compact-toolbar .help-popover summary,
   .compact-toolbar .file-project-popover summary,
+  .compact-toolbar .text-popover summary,
   .compact-toolbar .reset-popover summary,
   .compact-toolbar .background-popover summary,
   .compact-toolbar .page-size-field select {
@@ -126,6 +127,7 @@
   }
   .compact-toolbar .help-popover summary,
   .compact-toolbar .file-project-popover summary,
+  .compact-toolbar .text-popover summary,
   .compact-toolbar .reset-popover summary,
   .compact-toolbar .background-popover summary {
     min-width: 78px;
@@ -138,6 +140,31 @@
   .reset-popover .popover-body { min-width: 230px; }
   .about-popover .popover-body { min-width: 420px; line-height: 1.55; font-size: 12.5px; }
   .about-popover .popover-body p { margin: 0 0 8px; }
+  .print-file-popover {
+    width: 100%;
+  }
+  .print-file-popover summary {
+    min-height: 38px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    cursor: pointer;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: linear-gradient(180deg, rgba(255,255,255,.72), rgba(230,218,198,.72));
+  }
+  .print-file-body {
+    display: grid;
+    gap: 8px;
+    margin-top: 8px;
+  }
+  .print-file-body select,
+  .print-file-body button,
+  .print-file-body .file-button {
+    width: 100%;
+    min-height: 40px;
+  }
   .about-popover .popover-body p:last-child { margin-bottom: 0; }
   .reset-actions { display: flex; gap: 8px; grid-column: span 2; }
   .reset-actions button { flex: 1 1 0; }
@@ -1157,16 +1184,15 @@
     max-width: 100%;
   }
   html[data-layout-mode="tablet"] .brand-row {
-    position: sticky;
-    top: 0;
+    position: static;
     z-index: 2100;
     align-items: center;
     padding: 8px 10px;
-    border: 1px solid rgba(155,126,91,.24);
-    border-radius: 14px;
-    background: rgba(255,250,241,.70);
-    box-shadow: 0 12px 26px rgba(91,62,35,.10);
-    backdrop-filter: blur(10px);
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+    backdrop-filter: none;
   }
   html[data-layout-mode="tablet"] .brand-logo {
     flex: 0 0 48px;
@@ -1191,6 +1217,8 @@
   html[data-layout-mode="tablet"] .title-row input[type=color],
   html[data-layout-mode="tablet"] .title-row .dropzone,
   html[data-layout-mode="tablet"] .title-row .help-popover summary,
+  html[data-layout-mode="tablet"] .title-row .auto-layout-popover summary,
+  html[data-layout-mode="tablet"] .title-row .about-popover summary,
   html[data-layout-mode="tablet"] .title-row .ai-assistant-popover summary,
   html[data-layout-mode="tablet"] .compact-toolbar button,
   html[data-layout-mode="tablet"] .compact-toolbar select,
@@ -1199,7 +1227,9 @@
     min-height: 46px;
   }
   html[data-layout-mode="tablet"] .title-row .dropzone,
-  html[data-layout-mode="tablet"] .title-row .help-popover summary {
+  html[data-layout-mode="tablet"] .title-row .help-popover summary,
+  html[data-layout-mode="tablet"] .title-row .auto-layout-popover summary,
+  html[data-layout-mode="tablet"] .title-row .about-popover summary {
     width: 104px;
     flex-basis: 104px;
   }
@@ -1213,15 +1243,23 @@
     flex-basis: 46px;
   }
   html[data-layout-mode="tablet"] .compact-toolbar {
-    position: sticky;
-    top: 82px;
-    z-index: 2050;
-    width: max-content;
-    max-width: 100%;
+    position: fixed;
+    top: var(--tablet-toolbar-top, max(0px, env(safe-area-inset-top)));
+    left: max(14px, env(safe-area-inset-left));
+    right: max(14px, env(safe-area-inset-right));
+    z-index: 2600;
+    width: auto;
+    max-width: none;
     overflow-x: auto;
+    overflow-y: visible;
     padding: 8px;
     border-radius: 14px;
     backdrop-filter: blur(10px);
+  }
+  html[data-layout-mode="tablet"] #toolbarMount::after {
+    content: '';
+    display: block;
+    height: var(--tablet-toolbar-space, 64px);
   }
   html[data-layout-mode="tablet"] .compact-toolbar .page-size-field,
   html[data-layout-mode="tablet"] .compact-toolbar .reset-popover,
@@ -1243,7 +1281,7 @@
   }
   html[data-layout-mode="tablet"] .page-nav {
     position: absolute;
-    left: 50%;
+    left: var(--page-nav-center-x, 50%);
     right: auto;
     top: 8px;
     bottom: auto;
@@ -1505,6 +1543,7 @@
 
     .compact-toolbar .help-popover summary,
     .compact-toolbar .file-project-popover summary,
+    .compact-toolbar .text-popover summary,
     .compact-toolbar .reset-popover summary,
     .compact-toolbar .background-popover summary,
     .compact-toolbar .page-size-field select,
@@ -1707,6 +1746,200 @@
       flex-basis: 100%;
     }
   }
+  html[data-layout-mode="tablet"] .compact-toolbar .toolbar-popover summary,
+  html[data-layout-mode="tablet"] .title-row .toolbar-popover summary,
+  html[data-layout-mode="tablet"] .compact-toolbar button,
+  html[data-layout-mode="tablet"] .compact-toolbar select,
+  html[data-layout-mode="tablet"] .compact-toolbar .file-button,
+  html[data-layout-mode="tablet"] .compact-toolbar .dropzone,
+  html[data-layout-mode="tablet"] .page-nav button,
+  html[data-layout-mode="tablet"] .page-nav input,
+  html[data-layout-mode="tablet"] .page-nav .toolbar-popover summary {
+    box-sizing: border-box;
+    min-height: 46px;
+    height: 46px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1.08;
+    white-space: nowrap;
+  }
+
+  html[data-layout-mode="tablet"] .compact-toolbar .text-popover summary {
+    min-width: 78px;
+  }
+
+  html[data-layout-mode="tablet"] .compact-toolbar {
+    position: fixed;
+    top: var(--tablet-toolbar-top, max(0px, env(safe-area-inset-top)));
+    left: max(14px, env(safe-area-inset-left));
+    right: max(14px, env(safe-area-inset-right));
+    z-index: 2600;
+    width: auto;
+    max-width: none;
+    margin: 0;
+    overflow-x: auto;
+    overflow-y: visible;
+  }
+
+  html[data-layout-mode="tablet"] .page-nav {
+    overflow: visible;
+  }
+
+  html[data-layout-mode="tablet"] .title-row {
+    overflow: visible;
+  }
+
+  html[data-layout-mode="tablet"] .page-jump {
+    width: 76px;
+    min-width: 76px;
+  }
+
+  html[data-layout-mode="tablet"] .page-nav > span:not(.page-type-badge) {
+    min-height: 46px;
+    display: inline-flex;
+    align-items: center;
+    white-space: nowrap;
+  }
+
+  html[data-layout-mode="tablet"] .title-row .auto-layout-popover summary,
+  html[data-layout-mode="tablet"] .title-row .about-popover summary,
+  html[data-layout-mode="tablet"] .title-row .help-popover summary {
+    width: 104px;
+    flex-basis: 104px;
+  }
+
+  html[data-layout-mode="tablet"] .compact-toolbar .photo-shadow-field,
+  html[data-layout-mode="tablet"] .compact-toolbar .photo-frame-field {
+    flex: 0 0 92px;
+    min-width: 92px;
+  }
+
+  html[data-layout-mode="tablet"] .compact-toolbar .photo-shadow-field select,
+  html[data-layout-mode="tablet"] .compact-toolbar .photo-frame-field select {
+    width: 92px;
+  }
+
+  html[data-layout-mode="tablet"] .toolbar-popover .popover-body,
+  html[data-layout-mode="tablet"] .ai-assistant-body {
+    left: var(--page-popover-left, max(14px, env(safe-area-inset-left)));
+    right: auto;
+    width: var(--page-popover-width, min(288px, calc(100vw - 72px))) !important;
+    min-width: 0 !important;
+    max-width: min(300px, calc(100vw - 72px)) !important;
+    top: 154px;
+    max-height: calc(100dvh - 180px);
+    transform: none;
+    overscroll-behavior: contain;
+    touch-action: none;
+    cursor: move;
+  }
+
+  html[data-layout-mode="tablet"] .page-nav .toolbar-popover .popover-body {
+    left: var(--page-popover-left, max(14px, env(safe-area-inset-left)));
+    width: var(--page-popover-width, min(288px, calc(100vw - 72px))) !important;
+    min-width: 0 !important;
+    max-width: min(300px, calc(100vw - 72px)) !important;
+    top: 132px;
+    max-height: calc(100dvh - 160px);
+  }
+
+  html[data-layout-mode="tablet"] .about-popover .popover-body,
+  html[data-layout-mode="tablet"] .file-project-popover .popover-body,
+  html[data-layout-mode="tablet"] .print-file-popover .popover-body {
+    min-width: 0 !important;
+    max-width: min(300px, calc(100vw - 72px)) !important;
+  }
+
+  html[data-layout-mode="tablet"] .toolbar-popover .popover-body input,
+  html[data-layout-mode="tablet"] .toolbar-popover .popover-body select,
+  html[data-layout-mode="tablet"] .toolbar-popover .popover-body button,
+  html[data-layout-mode="tablet"] .toolbar-popover .popover-body textarea,
+  html[data-layout-mode="tablet"] .toolbar-popover .popover-body label,
+  html[data-layout-mode="tablet"] .ai-assistant-body input,
+  html[data-layout-mode="tablet"] .ai-assistant-body button {
+    cursor: auto;
+  }
+
+  html[data-layout-mode="tablet"] .popover-body.inline-tools,
+  html[data-layout-mode="tablet"] .text-popover .popover-body.inline-tools {
+    min-width: 0 !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 8px;
+  }
+
+  html[data-layout-mode="tablet"] .background-popover .popover-body.inline-tools,
+  html[data-layout-mode="tablet"] .reset-popover .popover-body.inline-tools,
+  html[data-layout-mode="tablet"] .auto-layout-popover .popover-body.inline-tools {
+    min-width: 0 !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  html[data-layout-mode="tablet"] .popover-body .wide-control,
+  html[data-layout-mode="tablet"] .popover-body .range-field,
+  html[data-layout-mode="tablet"] .text-popover .contrast-field {
+    grid-column: 1 / -1;
+  }
+
+  html[data-layout-mode="tablet"] .text-popover .font-size-field {
+    max-width: none;
+  }
+
+  html[data-layout-mode="tablet"] .text-popover .template-field {
+    grid-column: 1 / -1;
+  }
+
+  html[data-layout-mode="tablet"] .text-popover .template-button {
+    min-width: 0;
+  }
+
+  html[data-layout-mode="tablet"] .photo-library {
+    position: sticky;
+    left: auto;
+    right: auto;
+    bottom: auto;
+    top: 146px;
+    width: var(--photo-library-width, 224px);
+    min-width: 168px;
+    max-width: min(42vw, calc(100vw - 188px));
+    height: var(--photo-library-height, min(46dvh, 420px));
+    max-height: calc(100dvh - 164px);
+    overflow-y: auto;
+    overflow-x: hidden;
+    touch-action: pan-y;
+    -webkit-overflow-scrolling: touch;
+    z-index: 2200;
+  }
+
+  html[data-layout-mode="tablet"] .photo-library-resize,
+  html[data-layout-mode="tablet"] .photo-library-resize-y {
+    display: block;
+    touch-action: none;
+  }
+
+  html[data-layout-mode="tablet"] .tray {
+    flex-wrap: wrap;
+    min-width: 0;
+    padding-bottom: 14px;
+  }
+
+  html[data-layout-mode="tablet"] .tray-item {
+    flex: 0 0 68px;
+    touch-action: pan-y;
+  }
+
+  html[data-layout-mode="tablet"] .page-column {
+    padding-bottom: 28px;
+  }
+
+  html[data-layout-mode="tablet"] .pobj:not(.selected) {
+    touch-action: pan-y;
+  }
+
+  html[data-layout-mode="tablet"] .pobj.selected,
+  html[data-layout-mode="tablet"] .text-box.selected {
+    touch-action: none;
+  }
 </style>
 </head>
 <body>
@@ -1721,12 +1954,12 @@
           <option value="zh">中文</option>
           <option value="en">English</option>
         </select>
-        <input type="color" id="webBgColorInput" value="#f3eadb" title="页面背景色">
+        <input type="color" id="webBgColorInput" value="#28140a" title="页面背景色">
         <label class="dropzone title-dropzone" id="dropzone">
           <input type="file" id="fileInput" accept="image/*" multiple>
           <div class="dropzone-label"><b>导入照片</b></div>
         </label>
-        <details class="toolbar-popover help-popover">
+        <details class="toolbar-popover help-popover" id="helpPopover">
           <summary id="helpSummary">帮助</summary>
           <div class="popover-body help-body">
             <p>把托盘里的照片拖到当前页面即可放入；张数不限，位置、大小、旋转都能自由调整。</p>
@@ -1767,6 +2000,18 @@
         </select>
         <button class="ghost" id="openProjectBtn" type="button">打开文件</button>
         <button class="ghost" id="saveProjectBtn" type="button">保存文件</button>
+        <details class="print-file-popover">
+          <summary id="printFileSummary">打印设置</summary>
+          <div class="print-file-body">
+            <select id="printFormatSelect" title="输出格式">
+              <option value="pdf">PDF</option>
+              <option value="pdfx1a">PDF/X-1a</option>
+              <option value="pdfx4">PDF/X-4</option>
+              <option value="png">单页 PNG</option>
+            </select>
+            <button class="primary" id="printPdfBtn">打开打印设置</button>
+          </div>
+        </details>
       </div>
     </details>
     <div class="field compact-field page-size-field">
@@ -2069,13 +2314,6 @@
           <button class="page-turn-edge next" id="pageEdgeNextBtn" title="下一页" aria-label="下一页"></button>
         </div>
         <div class="page-actions">
-          <select id="printFormatSelect" title="输出格式">
-            <option value="pdf">PDF</option>
-            <option value="pdfx1a">PDF/X-1a</option>
-            <option value="pdfx4">PDF/X-4</option>
-            <option value="png">单页 PNG</option>
-          </select>
-          <button class="primary" id="printPdfBtn">输出印刷文件</button>
           <button class="ghost" id="preview3dBtn">实体书 3D 预览</button>
         </div>
       </div>
@@ -2186,8 +2424,8 @@ const I18N = {
     help: '帮助',
     prev: '上一页',
     next: '下一页',
-    addPage: '＋ 增加页面',
-    delPage: '－ 删除页面',
+    addPage: '+ 页面',
+    delPage: '- 页面',
     tocPage: '目录页',
     about: '关于',
     aboutVersionText: '版本：Rev0.1，仅 PC 端。',
@@ -2205,7 +2443,8 @@ const I18N = {
     aiQuickSave: '保存文件',
     lockPage: '锁定',
     unlockPage: '解锁',
-    outputFile: '输出印刷文件',
+    outputFile: '打开打印设置',
+    printFile: '打印设置',
     preview3d: '实体书 3D 预览',
     photoLibrary: '备选照片库',
     autoLayout: '自动排版',
@@ -2283,8 +2522,8 @@ const I18N = {
     help: 'Help',
     prev: 'Previous',
     next: 'Next',
-    addPage: '+ Add Page',
-    delPage: '- Delete Page',
+    addPage: '+ Page',
+    delPage: '- Page',
     tocPage: 'TOC Page',
     about: 'About',
     aboutVersionText: 'Version: Rev0.1, PC only.',
@@ -2302,7 +2541,8 @@ const I18N = {
     aiQuickSave: 'Save File',
     lockPage: 'Lock',
     unlockPage: 'Unlock',
-    outputFile: 'Export Print File',
+    outputFile: 'Open Print Settings',
+    printFile: 'Print Settings',
     preview3d: '3D Book Preview',
     photoLibrary: 'Picture Library',
     autoLayout: 'Auto Layout',
@@ -2447,6 +2687,7 @@ let book = null;
 let currentPageIdx = 0;
 let selectedTextId = null;
 let selectedPhotoObjId = null;
+let lastPhotoTap = { id: null, time: 0 };
 let activeTextEditor = null;
 let savedTextRange = null;
 let previewSpreadIdx = 0;
@@ -2657,6 +2898,7 @@ function applyLanguage() {
   projectFileSummary.textContent = t('projectFile');
   openProjectBtn.textContent = t('openProject');
   saveProjectBtn.textContent = t('saveProject');
+  document.getElementById('printFileSummary').textContent = t('printFile');
   setOptionText(projectSaveModeSelect, { full: t('fullSave'), light: t('lightSave') });
   resetSummary.textContent = t('reset');
   document.getElementById('helpSummary').textContent = t('help');
@@ -2868,7 +3110,7 @@ function applyLanguage() {
     <p><b>自动排版</b>：模板包括主图展示、四宫格、拼贴混排、横向故事带、照片+手账文字。可选择当前页/全书、时间顺序/同一时段/地点、每页 1-9 张照片上限、随机边框/随机背景/随机文字和忽略低质照片；锁定页面会被跳过。</p>
     <p><b>页面</b>：内页页码从 1 开始。直接点击页码并输入有效页数，可移动整页并自动重排其他内页页码。增加页面和删除页面都按双面印刷逻辑成对处理；删除页面会先警告，因为一次删除两页，请先把需要保留的照片放回备选库。</p>
     <p><b>复原</b>：当前页面只清空当前页；全书会重建当前项目书页；编辑器出厂设置会清除本地记忆、照片库、导入素材和工作台设置。每个选项都会要求确认。</p>
-    <p><b>文件</b>：完整保存会把照片嵌入项目文件，文件较大但更可靠；轻量保存会压缩照片预览，文件较小，但最终输出印刷文件前应保留原照片文件夹并核对清晰度。</p>
+    <p><b>文件</b>：完整保存会把照片嵌入项目文件，文件较大但更可靠；轻量保存会压缩照片预览，文件较小，但最终生成印刷文件前应保留原照片文件夹并核对清晰度。</p>
     <p><b>实体书预览</b>：可查看合起、翻开、自动翻页和定时间隔；全屏按钮可进入沉浸预览，再点一次或按 Esc 可退出全屏。</p>
     <p><b>输出</b>：可选择 PDF、PDF/X-1a、PDF/X-4 或单页 PNG；系统按当前开本输出，空白页提示和未编辑的文字模板示例不会进入印刷文件。</p>
     <p><b>记忆</b>：浏览器只自动记住语言、版式模式、工作台颜色、开本、照片库位置等轻量偏好；书页、照片、文字和导入素材请用“文件 > 保存文件”保存。</p>`;
@@ -2879,6 +3121,8 @@ function applyLanguage() {
 function applyLayoutMode() {
   const mode = uiState.layoutMode === 'tablet' ? 'tablet' : 'desktop';
   document.documentElement.dataset.layoutMode = mode;
+  arrangeLayoutModeControls(mode);
+  updateTabletToolbarMetrics();
   if (!layoutModeToggle) return;
   const title = mode === 'tablet' ? t('layoutModeTablet') : t('layoutModeDesktop');
   layoutModeToggle.classList.toggle('tablet-active', mode === 'tablet');
@@ -2886,6 +3130,136 @@ function applyLayoutMode() {
   layoutModeToggle.alt = title;
   layoutModeToggle.setAttribute('aria-label', title);
   layoutModeToggle.setAttribute('aria-pressed', mode === 'tablet' ? 'true' : 'false');
+  if (book && document.getElementById('tray')) {
+    renderTray();
+    applyPhotoLibraryState();
+  }
+}
+
+function isTabletLayout() {
+  return uiState.layoutMode === 'tablet';
+}
+
+function updateTabletToolbarMetrics() {
+  const toolbar = document.querySelector('.compact-toolbar');
+  if (!isTabletLayout() || !toolbar) {
+    document.documentElement.style.removeProperty('--tablet-toolbar-space');
+    document.documentElement.style.removeProperty('--tablet-toolbar-top');
+    return;
+  }
+  requestAnimationFrame(() => {
+    const brand = document.querySelector('.brand-row');
+    const brandBottom = brand ? brand.getBoundingClientRect().bottom + 8 : 0;
+    const rect = toolbar.getBoundingClientRect();
+    const top = Math.max(0, Math.min(brandBottom, window.innerHeight - rect.height - 12));
+    const space = Math.ceil(rect.height + 18);
+    document.documentElement.style.setProperty('--tablet-toolbar-top', top + 'px');
+    document.documentElement.style.setProperty('--tablet-toolbar-space', space + 'px');
+  });
+}
+
+function arrangeLayoutModeControls(mode) {
+  const titleRow = document.querySelector('.title-row');
+  const pageNav = document.querySelector('.page-column > .page-nav');
+  const dropzoneEl = document.getElementById('dropzone');
+  const helpPopover = document.getElementById('helpPopover');
+  const aiPopover = document.getElementById('aiAssistantPopover');
+  const autoLayoutPopover = document.getElementById('autoLayoutPopover');
+  const aboutPopover = document.getElementById('aboutPopover');
+  const tocPageBtnEl = document.getElementById('tocPageBtn');
+  if (!titleRow || !pageNav) return;
+  if (mode === 'tablet') {
+    if (dropzoneEl && autoLayoutPopover) dropzoneEl.after(autoLayoutPopover);
+    if (tocPageBtnEl && helpPopover) tocPageBtnEl.after(helpPopover);
+    if (helpPopover && aboutPopover) helpPopover.after(aboutPopover);
+  } else {
+    if (dropzoneEl && helpPopover) dropzoneEl.after(helpPopover);
+    if (helpPopover && aiPopover) helpPopover.after(aiPopover);
+    if (tocPageBtnEl && autoLayoutPopover) tocPageBtnEl.after(autoLayoutPopover);
+    if (autoLayoutPopover && aboutPopover) autoLayoutPopover.after(aboutPopover);
+  }
+}
+
+function isDoublePhotoTap(obj) {
+  const now = Date.now();
+  const sameTarget = lastPhotoTap.id === obj.id && now - lastPhotoTap.time < 430;
+  lastPhotoTap = { id: obj.id, time: now };
+  return sameTarget;
+}
+
+function clearObjectSelection(shouldRender = true) {
+  if (!selectedPhotoObjId && !selectedTextId) return;
+  selectedPhotoObjId = null;
+  selectedTextId = null;
+  activeTextEditor = null;
+  savedTextRange = null;
+  if (shouldRender) renderPage();
+}
+
+function closeFloatingPopovers(except = null) {
+  document.querySelectorAll('.toolbar-popover[open], .ai-assistant-popover[open]').forEach(detail => {
+    if (detail !== except) detail.open = false;
+  });
+}
+
+let floatingPopoverDrag = null;
+let suppressPopoverClickUntil = 0;
+
+function startFloatingPopoverDrag(e) {
+  if (!isTabletLayout()) return;
+  if (e.target.closest('button, input, select, textarea, label, a')) return;
+  const body = e.currentTarget;
+  const rect = body.getBoundingClientRect();
+  floatingPopoverDrag = {
+    body,
+    startX: e.clientX,
+    startY: e.clientY,
+    left: rect.left,
+    top: rect.top,
+    moved: false,
+  };
+  e.preventDefault();
+  e.stopPropagation();
+  try { body.setPointerCapture(e.pointerId); } catch (err) {}
+  window.addEventListener('pointermove', onFloatingPopoverDrag);
+  window.addEventListener('pointerup', endFloatingPopoverDrag);
+  window.addEventListener('pointercancel', endFloatingPopoverDrag);
+}
+
+function onFloatingPopoverDrag(e) {
+  if (!floatingPopoverDrag) return;
+  const { body, startX, startY, left, top } = floatingPopoverDrag;
+  const dx = e.clientX - startX;
+  const dy = e.clientY - startY;
+  if (!floatingPopoverDrag.moved && Math.hypot(dx, dy) < 5) return;
+  floatingPopoverDrag.moved = true;
+  const rect = body.getBoundingClientRect();
+  const nextLeft = Math.max(8, Math.min(window.innerWidth - rect.width - 8, left + dx));
+  const nextTop = Math.max(8, Math.min(window.innerHeight - Math.min(rect.height, window.innerHeight - 16) - 8, top + dy));
+  body.style.left = nextLeft + 'px';
+  body.style.top = nextTop + 'px';
+  body.style.right = 'auto';
+  e.preventDefault();
+  e.stopPropagation();
+}
+
+function endFloatingPopoverDrag(e) {
+  const draggedBody = floatingPopoverDrag && floatingPopoverDrag.body;
+  if (floatingPopoverDrag && floatingPopoverDrag.moved) {
+    draggedBody.dataset.dragJustEnded = '1';
+    suppressPopoverClickUntil = Date.now() + 350;
+    setTimeout(() => {
+      if (draggedBody) draggedBody.dataset.dragJustEnded = '';
+    }, 0);
+  }
+  floatingPopoverDrag = null;
+  window.removeEventListener('pointermove', onFloatingPopoverDrag);
+  window.removeEventListener('pointerup', endFloatingPopoverDrag);
+  window.removeEventListener('pointercancel', endFloatingPopoverDrag);
+  if (e) {
+    e.preventDefault();
+    e.stopPropagation();
+  }
 }
 
 function isNonMousePointer(e) {
@@ -2895,8 +3269,9 @@ function isNonMousePointer(e) {
 function addTouchStart(el, handler) {
   el.addEventListener('pointerdown', (e) => {
     if (!isNonMousePointer(e)) return;
+    const shouldCapture = handler(e);
+    if (shouldCapture === false) return;
     try { el.setPointerCapture(e.pointerId); } catch (err) {}
-    handler(e);
   });
 }
 
@@ -3364,7 +3739,7 @@ function paletteFromColor(color, style) {
 }
 
 function applyWorkspaceBackground(color) {
-  const base = color || '#f3eadb';
+  const base = color || '#28140a';
   const workspaceText = readableTextColor(base);
   const buttonMid = mixHex(base, '#ffffff', .58);
   const buttonText = readableTextColor(buttonMid);
@@ -3536,8 +3911,10 @@ function applyPhotoLibraryState() {
   document.querySelector('.workspace-grid').style.setProperty('--photo-library-width', (uiState.photoLibraryWidth || 224) + 'px');
   if (uiState.photoLibraryHeight) {
     const rect = photoLibrary.getBoundingClientRect();
-    const maxHeight = Math.max(170, window.innerHeight - rect.top - 18);
-    uiState.photoLibraryHeight = Math.max(150, Math.min(maxHeight, uiState.photoLibraryHeight));
+    const maxHeight = tabletMode
+      ? Math.max(210, Math.min(window.innerHeight * 0.62, window.innerHeight - 118))
+      : Math.max(170, window.innerHeight - rect.top - 18);
+    uiState.photoLibraryHeight = Math.max(tabletMode ? 190 : 150, Math.min(maxHeight, uiState.photoLibraryHeight));
     photoLibrary.style.setProperty('--photo-library-height', uiState.photoLibraryHeight + 'px');
     photoLibrary.style.setProperty('--photo-library-max-height', uiState.photoLibraryHeight + 'px');
   } else {
@@ -3583,6 +3960,12 @@ function syncPhotoLibraryHeight() {
   requestAnimationFrame(() => {
     photoLibrary.style.removeProperty('--photo-library-height');
     photoLibrary.style.removeProperty('--photo-library-max-height');
+    if (uiState.layoutMode === 'tablet') {
+      const fittedHeight = Math.round(Math.max(210, Math.min(window.innerHeight * 0.42, 430, window.innerHeight - 140)));
+      photoLibrary.style.setProperty('--photo-library-height', fittedHeight + 'px');
+      photoLibrary.style.setProperty('--photo-library-max-height', fittedHeight + 'px');
+      return;
+    }
     const pageRect = pageFrame.getBoundingClientRect();
     const libraryRect = photoLibrary.getBoundingClientRect();
     const maxHeight = Math.max(150, pageRect.bottom - libraryRect.top);
@@ -3847,7 +4230,7 @@ async function saveProjectFile(mode = 'full') {
       hint.textContent = mode === 'light'
         ? (lang() === 'en'
           ? 'Saved a light project file. Keep the original photo folder for final print quality.'
-          : '已保存轻量项目文件。最终输出印刷文件时请保留并核对原照片文件夹。')
+          : '已保存轻量项目文件。最终生成印刷文件时请保留并核对原照片文件夹。')
         : (lang() === 'en' ? 'Saved a full project file with embedded photos.' : '已保存完整项目文件，照片已嵌入文件。');
       return;
     } catch (err) {
@@ -3868,7 +4251,7 @@ async function saveProjectFile(mode = 'full') {
   hint.textContent = mode === 'light'
     ? (lang() === 'en'
       ? 'Saved a light project file. Keep the original photo folder for final print quality.'
-      : '已保存轻量项目文件。最终输出印刷文件时请保留并核对原照片文件夹。')
+      : '已保存轻量项目文件。最终生成印刷文件时请保留并核对原照片文件夹。')
     : (lang() === 'en' ? 'Saved a full project file with embedded photos.' : '已保存完整项目文件，照片已嵌入文件。');
 }
 
@@ -4125,7 +4508,7 @@ function applyResetScope(scope) {
     autoBackgroundMaps = [];
     uiState = { ...DEFAULT_UI_STATE };
     languageSelect.value = uiState.language;
-    webBgColorInput.value = '#f3eadb';
+    webBgColorInput.value = '#28140a';
     pageSizeSelect.value = '16kai';
     initBook();
     applyLanguage();
@@ -4196,8 +4579,12 @@ function renderTray() {
   photos.forEach(p => {
     const item = document.createElement('div');
     item.className = 'tray-item';
-    item.draggable = true;
+    item.draggable = uiState.layoutMode !== 'tablet';
     item.addEventListener('dragstart', (e) => {
+      if (uiState.layoutMode === 'tablet') {
+        e.preventDefault();
+        return;
+      }
       e.dataTransfer.setData('text/plain', p._id);
       e.dataTransfer.effectAllowed = 'copy';
     });
@@ -4717,7 +5104,7 @@ function lightProjectPrintWarning() {
   if (!book || book.projectSaveMode !== 'light') return '';
   return lang() === 'en'
     ? 'This book was opened from a light project file, so photos are compressed previews. Keep the original photo folder and verify image quality before final printing.'
-    : '当前书来自轻量项目文件，照片是压缩预览图；最终输出印刷文件前请保留原照片文件夹，并核对图片清晰度。';
+    : '当前书来自轻量项目文件，照片是压缩预览图；最终生成印刷文件前请保留原照片文件夹，并核对图片清晰度。';
 }
 
 function ensureEvenContentPages() {
@@ -5090,12 +5477,14 @@ keepOutsideBtn.addEventListener('click', () => {
 });
 
 preview3dBtn.addEventListener('click', () => {
-  preview3d.classList.toggle('active');
+  const shouldOpen = isTabletLayout() ? true : !preview3d.classList.contains('active');
+  preview3d.classList.toggle('active', shouldOpen);
   if (!preview3d.classList.contains('active')) {
     stopAutoFlip();
     if (bookStage) bookStage.classList.remove('pageflip-mode');
     preview3d.classList.remove('fullscreen');
     previewFullscreenBtn.textContent = t('fullscreen');
+    return;
   }
   const warning = evenPageWarning();
   if (warning) hint.textContent = warning;
@@ -5103,7 +5492,9 @@ preview3dBtn.addEventListener('click', () => {
   bookPreviewClosed = preview3d.classList.contains('active');
   bookClosedPageIdx = currentPageIdx >= book.pages.length - 1 ? book.pages.length - 1 : 0;
   stPageFlipTargetPage = bookClosedPageIdx;
+  resetStPageFlipPreview();
   renderBookPreview();
+  if (isTabletLayout()) preview3d.scrollIntoView({ behavior: 'smooth', block: 'start' });
 });
 bookPrevBtn.addEventListener('click', () => turnBookPreview(-1));
 bookNextBtn.addEventListener('click', () => turnBookPreview(1));
@@ -5134,24 +5525,45 @@ document.addEventListener('keydown', (e) => {
 });
 
 document.addEventListener('click', (e) => {
-  if (e.target.closest('.toolbar-popover')) return;
-  if (e.target.closest('.page-frame, .pobj, .text-box')) {
-    document.querySelectorAll('.toolbar-popover[open]').forEach(detail => { detail.open = false; });
+  if (Date.now() < suppressPopoverClickUntil) {
+    e.preventDefault();
+    e.stopPropagation();
+    return;
+  }
+  if (e.target.closest('.toolbar-popover, .ai-assistant-popover')) return;
+  const clickedPage = e.target.closest('.page-frame');
+  if (clickedPage) {
+    closeFloatingPopovers();
+    if (!e.target.closest('.pobj, .text-box, .slot-controls, .text-controls')) {
+      clearObjectSelection();
+    }
     return;
   }
   if (e.target.closest('.photo-library')) return;
+  closeFloatingPopovers();
   if (e.target.closest('button, input, select, textarea, label')) {
-    document.querySelectorAll('.toolbar-popover[open]').forEach(detail => { detail.open = false; });
+    return;
   }
+  clearObjectSelection();
 });
 
-document.querySelectorAll('.toolbar-popover').forEach(detail => {
+document.querySelectorAll('.toolbar-popover, .ai-assistant-popover').forEach(detail => {
   detail.addEventListener('toggle', () => {
     if (!detail.open) return;
-    document.querySelectorAll('.toolbar-popover[open]').forEach(other => {
+    document.querySelectorAll('.toolbar-popover[open], .ai-assistant-popover[open]').forEach(other => {
       if (other !== detail) other.open = false;
     });
+    const body = detail.querySelector('.popover-body, .ai-assistant-body');
+    if (body) {
+      body.style.left = '';
+      body.style.top = '';
+      body.style.right = '';
+    }
   });
+});
+
+document.querySelectorAll('.popover-body, .ai-assistant-body').forEach(body => {
+  body.addEventListener('pointerdown', startFloatingPopoverDrag);
 });
 
 let photoLibraryDrag = null;
@@ -5210,9 +5622,9 @@ function onPhotoLibraryDrag(e) {
     if (photoLibraryDrag.mode === 'both' || photoLibraryDrag.mode === 'height') {
       const pageBottom = pageFrame.getBoundingClientRect().bottom;
       const viewportLimit = window.innerHeight - photoLibraryDrag.top - 18;
-      const pageLimit = uiState.layoutMode === 'tablet' ? viewportLimit : pageBottom - photoLibraryDrag.top;
-      const maxHeight = Math.max(170, Math.min(viewportLimit, pageLimit));
-      uiState.photoLibraryHeight = Math.max(150, Math.min(maxHeight, photoLibraryDrag.height + e.clientY - photoLibraryDrag.startY));
+      const pageLimit = uiState.layoutMode === 'tablet' ? Math.min(window.innerHeight * 0.62, window.innerHeight - 118) : pageBottom - photoLibraryDrag.top;
+      const maxHeight = Math.max(210, Math.min(viewportLimit, pageLimit));
+      uiState.photoLibraryHeight = Math.max(uiState.layoutMode === 'tablet' ? 190 : 150, Math.min(maxHeight, photoLibraryDrag.height + e.clientY - photoLibraryDrag.startY));
     }
     applyPhotoLibraryState();
   }
@@ -5879,11 +6291,26 @@ function syncPageEdgeButtons() {
   if (!pageRect.height || !wrapRect.height) return;
   const centerY = pageRect.top - wrapRect.top + pageRect.height / 2;
   wrap.style.setProperty('--page-edge-center-y', centerY.toFixed(2) + 'px');
+  if (isTabletLayout()) {
+    const pageColumnRect = document.querySelector('.page-column').getBoundingClientRect();
+    const pageCenterX = pageRect.left - pageColumnRect.left + pageRect.width / 2;
+    const availablePopoverWidth = Math.max(260, Math.min(pageRect.width * 0.54, window.innerWidth - 72));
+    const popoverWidth = Math.max(260, Math.min(300, availablePopoverWidth));
+    const popoverLeft = Math.max(12, pageRect.left + (pageRect.width - popoverWidth) / 2);
+    document.documentElement.style.setProperty('--page-nav-center-x', pageCenterX.toFixed(2) + 'px');
+    document.documentElement.style.setProperty('--page-popover-left', popoverLeft.toFixed(2) + 'px');
+    document.documentElement.style.setProperty('--page-popover-width', popoverWidth.toFixed(2) + 'px');
+  } else {
+    document.documentElement.style.removeProperty('--page-nav-center-x');
+    document.documentElement.style.removeProperty('--page-popover-left');
+    document.documentElement.style.removeProperty('--page-popover-width');
+  }
 }
 
 function renderPage() {
   const page = book.pages[currentPageIdx];
   ensurePageDefaults(page, currentPageIdx);
+  updateTabletToolbarMetrics();
   pageTypeBadge.textContent = (PAGE_TYPE_LABEL[lang()] && PAGE_TYPE_LABEL[lang()][page.type]) || page.type;
   if (page.type === 'content') {
     pageJump.value = contentPageNumberForIndex(currentPageIdx);
@@ -5894,7 +6321,7 @@ function renderPage() {
     pageJump.max = book.pages.length;
     pageTotal.textContent = book.pages.length;
   }
-  pageTotal.parentElement.lastChild.textContent = ' ' + ((PAGE_TYPE_LABEL[lang()] && PAGE_TYPE_LABEL[lang()].pageUnit) || '页');
+  pageTotal.parentElement.lastChild.textContent = '';
   prevBtn.disabled = currentPageIdx === 0;
   nextBtn.disabled = currentPageIdx === book.pages.length - 1;
   pageEdgePrevBtn.disabled = prevBtn.disabled;
@@ -5910,7 +6337,7 @@ function renderPage() {
   bgStyleSelect.value = page.background.style || 'solid';
   bgColorInput.value = page.background.color || '#eae6dc';
   randomBgBtn.disabled = !isPainterStyle(page.background.style);
-  webBgColorInput.value = book.workspaceBackground || '#f3eadb';
+  webBgColorInput.value = book.workspaceBackground || '#28140a';
 
   const ratio = PAGE_RATIOS[book.pageSizeKey];
   pageFrame.className = 'page-frame ' + page.type + '-material' + (drawingEnabled ? ' drawing-active' : '') + (page.locked ? ' page-locked' : '');
@@ -6130,6 +6557,17 @@ function renderObject(page, obj) {
   div.dataset.objId = obj.id;
   div.addEventListener('click', (e) => {
     e.stopPropagation();
+    if (isTabletLayout() && selectedPhotoObjId !== obj.id && !isDoublePhotoTap(obj)) {
+      hint.textContent = lang() === 'en'
+        ? 'Double-tap a photo to select and edit it.'
+        : '双击照片后再编辑；点击页面空白处可取消选中。';
+      return;
+    }
+    selectPhotoObject(obj);
+    renderPage();
+  });
+  div.addEventListener('dblclick', (e) => {
+    e.stopPropagation();
     selectPhotoObject(obj);
     renderPage();
   });
@@ -6151,11 +6589,13 @@ function renderObject(page, obj) {
     addMissingPhotoDeleteControls(page, obj, div);
     div.addEventListener('mousedown', (e) => {
       e.stopPropagation();
+      if (isTabletLayout()) return;
       selectPhotoObject(obj);
       renderPage();
     });
     addTouchStart(div, (e) => {
       e.stopPropagation();
+      if (isTabletLayout() && selectedPhotoObjId !== obj.id) return false;
       selectPhotoObject(obj);
       renderPage();
     });
@@ -6233,17 +6673,19 @@ function renderObject(page, obj) {
   div.appendChild(angleReadout);
 
   div.addEventListener('mousedown', (e) => {
+    if (isTabletLayout()) return;
     selectPhotoObject(obj);
     startMove(e, div, page, obj);
   });
-  resizeHandle.addEventListener('mousedown', (e) => { e.stopPropagation(); startResize(e, div, page, obj); });
-  rotateHandle.addEventListener('mousedown', (e) => { e.stopPropagation(); startRotate(e, div, page, obj, angleReadout); });
+  resizeHandle.addEventListener('mousedown', (e) => { e.stopPropagation(); if (!isTabletLayout() || selectedPhotoObjId === obj.id) startResize(e, div, page, obj); });
+  rotateHandle.addEventListener('mousedown', (e) => { e.stopPropagation(); if (!isTabletLayout() || selectedPhotoObjId === obj.id) startRotate(e, div, page, obj, angleReadout); });
   addTouchStart(div, (e) => {
+    if (isTabletLayout() && selectedPhotoObjId !== obj.id) return false;
     selectPhotoObject(obj);
     startMove(e, div, page, obj);
   });
-  addTouchStart(resizeHandle, (e) => { e.stopPropagation(); startResize(e, div, page, obj); });
-  addTouchStart(rotateHandle, (e) => { e.stopPropagation(); startRotate(e, div, page, obj, angleReadout); });
+  addTouchStart(resizeHandle, (e) => { e.stopPropagation(); if (!isTabletLayout() || selectedPhotoObjId === obj.id) startResize(e, div, page, obj); });
+  addTouchStart(rotateHandle, (e) => { e.stopPropagation(); if (!isTabletLayout() || selectedPhotoObjId === obj.id) startRotate(e, div, page, obj, angleReadout); });
 
   pageFrame.appendChild(div);
 
@@ -7108,10 +7550,11 @@ function createBlankStaticPage(className = '') {
 
   function renderStPageFlipPreview() {
     if (!preview3d.classList.contains('active') || !canUseStPageFlip()) return false;
-    bookStage.classList.add('pageflip-mode');
-    const { width, height } = stPageBaseSize();
-    const signature = stPageFlipContentSignature();
-    const needsReload = signature !== stPageFlipSignature;
+    try {
+      bookStage.classList.add('pageflip-mode');
+      const { width, height } = stPageBaseSize();
+      const signature = stPageFlipContentSignature();
+      const needsReload = signature !== stPageFlipSignature;
       if (!stPageFlip) {
         stPageFlip = new St.PageFlip(stPageFlipBook, {
         width, height,
@@ -7160,6 +7603,14 @@ function createBlankStaticPage(className = '') {
       }
     setTimeout(syncStPageFlipButtons, 40);
     return true;
+    } catch (err) {
+      resetStPageFlipPreview();
+      if (bookStage) bookStage.classList.remove('pageflip-mode');
+      hint.textContent = lang() === 'en'
+        ? '3D preview fell back to the built-in book view.'
+        : '3D 预览已切换到内置书本视图。';
+      return false;
+    }
   }
   
   function firstOpenSpreadIdx() {
@@ -7407,7 +7858,6 @@ async function outputPrintFile() {
     hint.textContent += lang() === 'en'
       ? ' On tablet, use the browser Share/Print command if automatic print is blocked.'
       : ' 平板上如浏览器拦截自动打印，请使用浏览器分享/打印功能。';
-    return;
   }
   window.print();
 }
@@ -7443,7 +7893,7 @@ function offerExportDownload(url, filename, message) {
   const tabletMessage = lang() === 'en'
     ? 'PNG is ready. Tap Save PNG to open or save it.'
     : 'PNG 已准备好。请点击“保存 PNG”打开或保存。';
-  const actions = document.querySelector('.page-actions') || hint;
+  const actions = document.querySelector('.print-file-body') || document.querySelector('.page-actions') || hint;
   const link = document.createElement('a');
   link.id = 'pngDownloadLink';
   link.href = url;
@@ -7770,8 +8220,18 @@ function updateUndoButton() {
 let resizeTimer = null;
 window.addEventListener('resize', () => {
   clearTimeout(resizeTimer);
-  resizeTimer = setTimeout(() => { if (book) renderPage(); }, 150);
+  resizeTimer = setTimeout(() => {
+    updateTabletToolbarMetrics();
+    if (book) renderPage();
+  }, 150);
 });
+window.addEventListener('orientationchange', () => {
+  setTimeout(updateTabletToolbarMetrics, 160);
+});
+window.addEventListener('scroll', () => {
+  if (!isTabletLayout()) return;
+  updateTabletToolbarMetrics();
+}, { passive: true });
 window.addEventListener('beforeunload', persistAppStateNow);
 
 // ---- 启动 ----
