@@ -1483,6 +1483,8 @@
     pointer-events: none;
     white-space: nowrap;
     text-overflow: ellipsis;
+    color: #2d2922 !important;
+    text-shadow: none !important;
   }
   html[data-layout-mode="tablet"] .preview-3d.fullscreen .st-pageflip-book {
     width: min(98vw, 1540px);
@@ -3614,16 +3616,17 @@ function syncIPadSelectValueMirrors() {
       mirror.style.color = computed.color;
       layer.appendChild(mirror);
       select.classList.add('ios-select-mirror-target');
-      ['focus', 'pointerdown'].forEach(eventName => select.addEventListener(eventName, () => {
-        mirror.hidden = true;
-      }));
       ['blur', 'input', 'change'].forEach(eventName => select.addEventListener(eventName, () => {
         requestAnimationFrame(syncIPadSelectValueMirrors);
+        setTimeout(syncIPadSelectValueMirrors, 80);
       }));
     }
     const option = select.selectedOptions && select.selectedOptions[0];
     mirror.textContent = option ? option.textContent : '';
-    mirror.hidden = !rect.width || !rect.height || document.activeElement === select;
+    // iPad Safari may keep a native select focused after its picker closes.
+    // Never hide the visual value for focus alone: the mirror is pointer-free
+    // and the native picker still opens above it.
+    mirror.hidden = !rect.width || !rect.height;
     mirror.style.left = `${Math.round(rect.left + 10)}px`;
     mirror.style.top = `${Math.round(rect.top)}px`;
     mirror.style.width = `${Math.max(0, Math.round(rect.width - 30))}px`;
