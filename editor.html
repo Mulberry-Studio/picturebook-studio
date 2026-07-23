@@ -91,10 +91,17 @@
     filter: brightness(0) saturate(100%) invert(36%) sepia(98%) saturate(2055%) hue-rotate(9deg) brightness(96%) contrast(107%) drop-shadow(0 1px 0 rgba(255,221,190,.30));
   }
   h1.image-title span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  @font-face {
+    font-family: 'Cinzel';
+    src: url('assets/fonts/Cinzel-Variable.ttf') format('truetype');
+    font-weight: 400 900;
+    font-style: normal;
+    font-display: swap;
+  }
   h1.text-title .title-art { display: none; }
   h1.text-title span {
     position: static; width: auto; height: auto; overflow: visible; clip: auto; white-space: nowrap;
-    font-family: 'Copperplate', 'Cinzel', Georgia, serif; font-weight: 760;
+    font-family: 'Cinzel', 'Copperplate', Georgia, serif; font-weight: 760;
     background: var(--title-orange-gradient); color: transparent;
     -webkit-background-clip: text; background-clip: text;
   }
@@ -364,7 +371,7 @@
     cursor: move; user-select: none; font-weight: 650; text-shadow: none; text-align: center;
   }
   html[lang="en"] .photo-library-title {
-    font-family: 'Copperplate', 'Cinzel', Georgia, serif;
+    font-family: 'Cinzel', 'Copperplate', Georgia, serif;
     font-size: 16px; font-weight: 760; letter-spacing: 0;
   }
   .photo-library-title::after {
@@ -1305,17 +1312,18 @@
   }
   html[data-layout-mode="tablet"] .page-nav {
     position: absolute;
-    left: var(--page-nav-center-x, 50%);
-    right: auto;
+    left: 12px;
+    right: 12px;
     top: 8px;
     bottom: auto;
-    transform: translateX(-50%);
+    transform: none;
+    margin-inline: auto;
     z-index: 1900;
     display: flex;
     flex-wrap: nowrap;
     justify-content: flex-start;
     max-width: calc(100% - 24px);
-    width: auto;
+    width: max-content;
     padding: 7px;
     border-radius: 14px;
     background: rgba(255,250,241,.74);
@@ -2034,7 +2042,13 @@
   }
   html[data-layout-mode="tablet"] .library-scroll-button.up { transform: rotate(90deg); }
   html[data-layout-mode="tablet"] .library-scroll-button.down { transform: rotate(-90deg); }
-  html[data-layout-mode="tablet"] .page-nav.popover-active { z-index: 2800; }
+  html[data-layout-mode="tablet"] .page-nav.popover-active {
+    z-index: 2800;
+    /* backdrop-filter creates a containing block for fixed descendants on
+       WebKit. Disable it while a panel is open so Help/About can use viewport
+       coordinates instead of being trapped beside the page navigation. */
+    backdrop-filter: none;
+  }
   html[data-layout-mode="tablet"] .compact-toolbar:has(.toolbar-popover[open]) { z-index: 3800; }
   html[data-layout-mode="tablet"] .brand-row { position: relative; }
   html[data-layout-mode="tablet"] .brand-row.popover-active,
@@ -2295,7 +2309,7 @@
         <details class="toolbar-popover help-popover" id="helpPopover">
           <summary id="helpSummary">帮助</summary>
           <div class="popover-body help-body">
-            <p>把托盘里的照片拖到当前页面即可放入；张数不限，位置、大小、旋转都能自由调整。</p>
+            <p>PC 端将备选照片区照片拖到当前页面；平板端点击备选照片区照片即可放入。</p>
           </div>
         </details>
         <details class="ai-assistant-popover" id="aiAssistantPopover">
@@ -2341,6 +2355,7 @@
               <option value="pdfx1a">PDF/X-1a</option>
               <option value="pdfx4">PDF/X-4</option>
               <option value="png">单页 PNG</option>
+              <option value="pngbook">全书 PNG（ZIP）</option>
             </select>
             <button class="primary" id="printPdfBtn">打开打印设置</button>
           </div>
@@ -2374,7 +2389,7 @@
               <option value="'Brush Script MT', 'Segoe Script', cursive">英文手写</option>
             <option value="'Lucida Handwriting', 'Segoe Print', cursive">英文手札</option>
             <option value="'Papyrus', 'Georgia', fantasy">艺术衬线</option>
-            <option value="'Copperplate', 'Cinzel', Georgia, serif">古典标题</option>
+            <option value="'Cinzel', 'Copperplate', Georgia, serif">古典标题</option>
             <option value="'Courier New', monospace">等宽</option>
           </select>
         </div>
@@ -2805,7 +2820,7 @@ const I18N = {
     exitFullscreen: '退出全屏',
     interval: '间隔',
     seconds: '秒',
-    emptyPage: '把托盘里的照片拖到这里',
+    emptyPage: '拖动或点击备选照片区照片放入这里',
     missingPhoto: '照片已从托盘移除',
   },
   en: {
@@ -2903,7 +2918,7 @@ const I18N = {
     exitFullscreen: 'Exit Fullscreen',
     interval: 'Interval',
     seconds: 'sec',
-    emptyPage: 'Drag photos here',
+    emptyPage: 'Drag or tap a library photo here',
     missingPhoto: 'Photo removed from library',
   },
 };
@@ -3058,7 +3073,6 @@ let uiState = { ...DEFAULT_UI_STATE };
 let storageSaveTimer = null;
 let storageWarningShown = false;
 let pendingLocalPreferences = null;
-let languageRenderVersion = 0;
 const STORAGE_KEY = 'picturebookStudioStateV1';
 const TEMPLATE_PLACEHOLDER_TEXTS = new Set([
   'A Bright Day', 'small stories gathered here', 'PHOTO NOTES', 'A soft place for memory', 'Write a short note about this spread.',
@@ -3109,28 +3123,10 @@ function setOptionText(select, map) {
 }
 
 function replaceSelectOptionText(select, map) {
-  if (!select) return;
-  const selectedValue = select.value;
-  Array.from(select.options).forEach(option => {
-    if (!Object.prototype.hasOwnProperty.call(map, option.value)) return;
-    const replacement = new Option(map[option.value], option.value, option.defaultSelected, option.value === selectedValue);
-    replacement.disabled = option.disabled;
-    option.replaceWith(replacement);
-  });
-  select.value = selectedValue;
-}
-
-function refreshNativeSelectLabel(select) {
-  if (!select) return;
-  const selectedValue = select.value;
-  const selectedIndex = Array.from(select.options).findIndex(option => option.value === selectedValue);
-  // Safari can keep the old selected option label after its text changes until
-  // the control is focused. Clear and restore the selection without emitting
-  // input/change, so no photo setting is accidentally applied.
-  select.selectedIndex = -1;
-  void select.offsetWidth;
-  select.value = selectedValue;
-  if (selectedIndex >= 0) select.selectedIndex = selectedIndex;
+  // Keep the native select and option nodes stable. Replacing them while a
+  // browser is repainting a language switch can leave the closed label and
+  // the surrounding localized labels out of sync.
+  setOptionText(select, map);
 }
 
 function syncPhotoEffectSelectLabels(expanded = false) {
@@ -3155,8 +3151,6 @@ function syncPhotoEffectSelectLabels(expanded = false) {
       'ornate-gold': '金框', 'watercolor-bloom': '水彩花', 'blob-mask': '异形', 'circle-mask': '圆形',
       pip: '画中画', 'diagonal-sash': '斜切',
     });
-    refreshNativeSelectLabel(photoShadowSelect);
-    refreshNativeSelectLabel(photoFrameSelect);
     return;
   }
   replaceSelectOptionText(photoShadowSelect, expanded
@@ -3179,8 +3173,6 @@ function syncPhotoEffectSelectLabels(expanded = false) {
     'ornate-gold': 'Gold', 'watercolor-bloom': 'Bloom', 'blob-mask': 'Mask', 'circle-mask': 'Circle',
     pip: 'PIP', 'diagonal-sash': 'Sash',
   });
-  refreshNativeSelectLabel(photoShadowSelect);
-  refreshNativeSelectLabel(photoFrameSelect);
 }
 
 function setFieldLabel(controlId, text) {
@@ -3191,7 +3183,7 @@ function setFieldLabel(controlId, text) {
 
 const HELP_QA = {
   zh: [
-    { keys: ['照片', '导入', '拖', '图库', '备选', '回库'], answer: '导入照片后会进入右侧备选照片库。把照片拖到当前页面即可放入；放入或自动排版使用后，会从图库移除。页面照片可点悬浮工具里的“回库”放回图库重新调整。' },
+    { keys: ['照片', '导入', '拖', '点击', '图库', '备选', '回库'], answer: '导入照片后会进入右侧备选照片库。PC 端将备选照片区照片拖到当前页面；平板端点击备选照片区照片即可放入。放入或自动排版使用后，照片会从图库移除。页面照片可点悬浮工具里的“回库”放回图库重新调整。' },
     { keys: ['移动', '位置', '大小', '缩放', '旋转', '裁切', '圆点', '右下', '+', '-', '重置'], answer: '选中页面照片后，可拖动照片框移动位置，拖右下圆点改变照片框大小，拖顶部圆点旋转。照片内悬浮工具可用方向箭头微调取景，+/- 缩放照片内容，重置恢复取景，回库放回备选库，删除则从页面移除。' },
     { keys: ['自动', '排版', '模板', '上限', '随机', '锁定'], answer: '在备选照片库里设置模板、范围、排版原则、每页照片上限、随机边框/随机背景/随机文字和低质照片过滤，然后点击“自动排版”。全书排版会跳过锁定页面，并尽量按顺序分配照片。' },
     { keys: ['模板', '主图', '四宫格', '拼贴', '故事带', '手账'], answer: '自动排版模板大致为：主图展示适合突出一张照片；四宫格适合整齐比较；拼贴混排更活泼；横向故事带适合时间推进；照片+手账文字会预留说明文字区域。系统会在模板内随机变化照片张数、位置和边框。' },
@@ -3203,7 +3195,7 @@ const HELP_QA = {
     { keys: ['目录', '目录页', '检索', 'toc', 'contents'], answer: '选中文字框后，在 L/C/R/X 控件中点“目录”，按钮变紫表示该文字会作为本页目录检索内容。页面导航栏里“目录页”按钮在删除页面和 AI 帮助之间；点击后会读取这些文字和页码生成目录页。再次生成会先替换旧目录页。目录页按内页计算，若目录页数为单数，会在封三前自动补一页空白内页。目录文字使用当前字体、字号、颜色和对比度设置。' },
     { keys: ['复原', 'reset', '当前页面', '全书', '出厂'], answer: '“复原”有三个范围：当前页面只清空当前页内容与设置；全书重建当前项目的书页结构；编辑器出厂设置会清除本地记忆、照片库、导入素材和工作台设置。每个复原都会要求确认。' },
     { keys: ['保存', '文件', '打开', '完整', '轻量'], answer: '“文件”里可打开或保存项目。完整保存会嵌入照片，文件较大但更可靠；轻量保存会压缩预览，文件较小，但最终印刷前要保留原照片文件夹并核对清晰度。' },
-    { keys: ['输出', 'pdf', 'png', '印刷', '打印'], answer: '底部可选择 PDF、PDF/X-1a、PDF/X-4 或单页 PNG。输出按当前开本和页面内容生成；轻量项目输出前会提醒检查原图质量。空白页提示和未编辑示例文字不会输出。' },
+    { keys: ['输出', 'pdf', 'png', '印刷', '打印'], answer: '底部可选择 PDF、PDF/X-1a、PDF/X-4、单页 PNG 或全书 PNG（ZIP）。全书 PNG 会将每页 PNG 打包为 ZIP，文件可能较大。输出按当前开本和页面内容生成；轻量项目输出前会提醒检查原图质量。空白页提示和未编辑示例文字不会输出。' },
     { keys: ['3d', '3-D', '预览', '翻页', '自动翻页', '全屏'], answer: '点击“实体书 3D 预览”可查看翻书效果。上一页/下一页按方向翻动；自动翻页再次点击会停止，间隔按秒设置；全屏按钮可进入或退出沉浸预览，Esc 也可退出。' },
     { keys: ['页码', '页面', '调序', '顺序'], answer: '内页页码从 1 开始，封面、封二、封三、封底不计入内页。页码可在页面中直接点击修改；输入 1 到最大内页数之间的数字会移动整页并自动重排其他页码，超出范围则不执行。' },
     { keys: ['撤回', '重做', 'undo', 'redo'], answer: 'Undo/Redo 可回撤或重做最近 3 次书本编辑操作。新编辑会重新开始 redo 路径。' },
@@ -3211,7 +3203,7 @@ const HELP_QA = {
     { keys: ['删除页', '增加页', '页数', '双面'], answer: '增加和删除内页按双面印刷逻辑成对处理。删除页会一次删除两页，并会先警告；删除前请把要保留的照片回收到备选图库。' },
   ],
   en: [
-    { keys: ['photo', 'import', 'drag', 'library', 'tray', 'back'], answer: 'Imported photos go into the Photo Library. Drag a photo onto the current page to place it. Once placed or used by Auto Layout, it is removed from the library; use Back on a page photo to return it to the library.' },
+    { keys: ['photo', 'import', 'drag', 'tap', 'library', 'tray', 'back'], answer: 'Imported photos go into the Picture Library. On PC, drag a library photo onto the current page. On tablet, tap a library photo to place it on the current page. Once placed or used by Auto Layout, it is removed from the library; use Back on a page photo to return it to the library.' },
     { keys: ['move', 'position', 'size', 'scale', 'rotate', 'crop', 'handle', 'corner', '+', '-', 'reset'], answer: 'Select a page photo, then drag the photo box to move it, drag the lower-right handle to resize it, and drag the top handle to rotate. The floating controls can nudge the crop, zoom content with +/-, reset the crop, return the photo to the library, or delete it from the page.' },
     { keys: ['auto', 'layout', 'template', 'max', 'random', 'lock'], answer: 'Use the Photo Library controls to choose template, scope, layout rule, max photos per page, random frame/background/text, and quality filtering, then click Auto Layout. Whole-book layout skips locked pages and distributes photos in order.' },
     { keys: ['template', 'hero', 'grid', 'collage', 'strip', 'journal'], answer: 'Auto Layout templates include Hero + captions for one key image, Four-grid for tidy comparison, Collage mix for lively pages, Story strip for sequence, and Photos + journal for picture-and-note pages. The app randomizes count, placement, and frames inside those templates.' },
@@ -3223,7 +3215,7 @@ const HELP_QA = {
     { keys: ['toc', 'contents', 'table of contents', 'index'], answer: 'Select a text box and click TOC in the L/C/R/X controls. Purple means that text will be used as this page’s contents entry. The TOC Page button sits between Delete Page and AI Help; it generates contents pages from marked text and page numbers. Regenerating replaces old automatic TOC pages first. Contents pages count as inner pages; if the generated count is odd, the app inserts one blank inner page before the inside back cover. TOC text uses the current font, size, color, and contrast controls.' },
     { keys: ['reset', 'current page', 'whole book', 'factory'], answer: 'Reset has three scopes: Current Page clears only the active page; Whole Book rebuilds the current book structure; Factory Settings clears local memory, photos, imported assets, and workspace settings. Each option asks for confirmation.' },
     { keys: ['save', 'file', 'open', 'full', 'light'], answer: 'Use File to open or save projects. Full Save embeds photos and is larger but more reliable. Light Save compresses previews and is smaller, but keep the original photo folder and verify quality before final printing.' },
-    { keys: ['export', 'pdf', 'png', 'print'], answer: 'At the bottom, choose PDF, PDF/X-1a, PDF/X-4, or Single Page PNG. Export uses the current book size and content. Empty-page hints and unedited template sample text are never exported.' },
+    { keys: ['export', 'pdf', 'png', 'print'], answer: 'At the bottom, choose PDF, PDF/X-1a, PDF/X-4, Single Page PNG, or Full-book PNG (ZIP). Full-book PNG packs one PNG per page into a ZIP and can be large. Export uses the current book size and content. Empty-page hints and unedited template sample text are never exported.' },
     { keys: ['3d', 'preview', 'flip', 'auto flip', 'fullscreen'], answer: 'Use 3D Book Preview to see the book flip. Previous/Next turn in that direction. Auto Flip toggles on/off, the interval is set in seconds, and Fullscreen enters or exits immersive preview; Esc also exits.' },
     { keys: ['page number', 'page', 'reorder', 'order'], answer: 'Inner page numbers start at 1. Cover, inside front, inside back, and back cover do not count as inner pages. Click a page number and enter a number from 1 to the max inner page count to move that whole page and renumber the others. Out-of-range values are ignored.' },
     { keys: ['undo', 'redo'], answer: 'Undo/Redo can reverse or redo the last 3 book edits. A new edit resets the redo path.' },
@@ -3256,7 +3248,6 @@ function askAiAssistant(question = aiAssistantInput.value) {
 }
 
 function applyLanguage() {
-  const renderVersion = ++languageRenderVersion;
   document.documentElement.lang = lang() === 'en' ? 'en' : 'zh-CN';
   document.title = STUDIO_BRAND_NAME;
   languageSelect.value = lang();
@@ -3383,7 +3374,10 @@ function applyLanguage() {
     square8: '方形 8×8in',
     square10: '方形 10×10in',
   });
-  setOptionText(printFormatSelect, { png: lang() === 'en' ? 'Single Page PNG' : '单页 PNG' });
+  setOptionText(printFormatSelect, {
+    png: lang() === 'en' ? 'Single Page PNG' : '单页 PNG',
+    pngbook: lang() === 'en' ? 'Full-book PNG (ZIP)' : '全书 PNG（ZIP）',
+  });
   setOptionText(fontFamilySelect, lang() === 'en' ? {
     "Georgia, 'Noto Serif SC', serif": 'Serif',
     "'SimHei', 'Microsoft YaHei', 'PingFang SC', sans-serif": 'Bold Sans',
@@ -3394,7 +3388,7 @@ function applyLanguage() {
       "'Brush Script MT', 'Segoe Script', cursive": 'Script Hand',
       "'Lucida Handwriting', 'Segoe Print', cursive": 'Hand Note',
       "'Papyrus', 'Georgia', fantasy": 'Art Serif',
-    "'Copperplate', 'Cinzel', Georgia, serif": 'Classic Title',
+    "'Cinzel', 'Copperplate', Georgia, serif": 'Classic Title',
     "'Courier New', monospace": 'Monospace',
   } : {
     "Georgia, 'Noto Serif SC', serif": '宋体/衬线',
@@ -3406,7 +3400,7 @@ function applyLanguage() {
       "'Brush Script MT', 'Segoe Script', cursive": '英文手写',
     "'Lucida Handwriting', 'Segoe Print', cursive": '英文手札',
     "'Papyrus', 'Georgia', fantasy": '艺术衬线',
-    "'Copperplate', 'Cinzel', Georgia, serif": '古典标题',
+    "'Cinzel', 'Copperplate', Georgia, serif": '古典标题',
     "'Courier New', monospace": '等宽',
   });
   setOptionText(textTemplateSelect, lang() === 'en' ? {
@@ -3455,8 +3449,8 @@ function applyLanguage() {
     feature: '主图展示', grid4: '四宫格', mosaic: '拼贴混排', strip: '横向故事带', diary: '照片 + 手账文字',
   });
   document.querySelector('.help-body').innerHTML = lang() === 'en' ? `
-    <p><b>Quick Start</b>: import photos, drag them from the Photo Library onto the current page, then move, resize, crop, rotate, frame, caption, and preview the book.</p>
-    <p><b>Photo Library</b>: imported photos appear in the right library. Dragging or Auto Layout places a photo on the page and removes it from the library. Use Back on a page photo to return it for rearranging between pages.</p>
+    <p><b>Quick Start</b>: import photos. On PC, drag a photo from the Picture Library onto the current page. On tablet, tap a Picture Library photo to place it on the current page. Then move, resize, crop, rotate, frame, caption, and preview the book.</p>
+    <p><b>Photo Library</b>: imported photos appear in the right library. Dragging on PC, tapping on tablet, or Auto Layout places a photo on the page and removes it from the library. Use Back on a page photo to return it for rearranging between pages.</p>
     <p><b>Photo Controls</b>: select a page photo, drag the photo box to move it, drag the lower-right handle to resize, and drag the top handle to rotate. The floating controls nudge the crop, zoom content with +/-, reset the crop, return to library, delete, or cycle frames.</p>
     <p><b>Shadow / Frame</b>: select a page photo first, then choose Shadow or Frame in the toolbar. Open each dropdown to choose No Shadow or No Frame.</p>
     <p><b>Text</b>: add movable text boxes or typography layout groups. Selected text can use its own font, size, color, and contrast. Import Font accepts local .ttf, .otf, and .woff files. Unedited sample text is skipped during export.</p>
@@ -3469,10 +3463,10 @@ function applyLanguage() {
     <p><b>Reset</b>: Current Page clears only this page; Whole Book rebuilds the current book; Factory Settings clears local memory, photos, imported assets, and workspace settings. Every reset asks for confirmation.</p>
     <p><b>File</b>: Full Save embeds photos and is larger but self-contained. Light Save stores compressed previews and is smaller; keep the original photo folder and verify quality before final print export.</p>
     <p><b>3D Preview</b>: preview the closed book, page turns, auto flip, timed interval, and fullscreen mode. Click Fullscreen again or press Esc to exit.</p>
-    <p><b>Export</b>: choose PDF, PDF/X-1a, PDF/X-4, or Single Page PNG. Empty-page hints and unedited template sample text are never printed/exported.</p>
+    <p><b>Export</b>: choose PDF, PDF/X-1a, PDF/X-4, Single Page PNG, or Full-book PNG (ZIP). The full-book option packages one PNG per page in a ZIP and can be large. Empty-page hints and unedited template sample text are never printed/exported.</p>
     <p><b>Memory</b>: the browser remembers lightweight preferences such as language, layout mode, workspace color, page size, and library panel position. Use File > Save File for book pages, photos, text, and imported assets.</p>` : `
-    <p><b>快速开始</b>：导入照片，把备选照片库里的照片拖到当前页面，然后移动、缩放、裁切、旋转、加边框，并用实体书预览检查效果。</p>
-    <p><b>照片库</b>：导入照片后会进入右侧备选照片库；拖入书页或自动排版使用后会从图库移除。页面照片可用“回库”放回图库，方便在不同页面之间重新调整。</p>
+    <p><b>快速开始</b>：导入照片。PC 端将备选照片区照片拖到当前页面；平板端点击备选照片区照片即可放入。然后移动、缩放、裁切、旋转、加边框，并用实体书预览检查效果。</p>
+    <p><b>照片库</b>：导入照片后会进入右侧备选照片库；PC 拖入、平板点击或自动排版使用后会从图库移除。页面照片可用“回库”放回图库，方便在不同页面之间重新调整。</p>
     <p><b>照片控制</b>：选中页面照片后，可拖动照片框移动位置，拖右下圆点改变照片框大小，拖顶部圆点旋转。照片内悬浮工具可用方向箭头微调取景，+/- 缩放照片内容，重置恢复取景，回库放回备选库，垃圾桶删除，换框按钮轮换边框。</p>
     <p><b>阴影 / 边框</b>：先选中页面照片，再在工具栏选择“阴影”或“边框”。下拉后可选“无阴影”或“无边框”清除效果。</p>
     <p><b>文字</b>：可添加单个文字框或文字版式组；添加后可移动、缩放、编辑文字。选中文字可单独改字体、字号、颜色和对比度。导入字体支持本地 .ttf/.otf/.woff 文件。未编辑的模板示例文字不会输出。</p>
@@ -3485,22 +3479,10 @@ function applyLanguage() {
     <p><b>复原</b>：当前页面只清空当前页；全书会重建当前项目书页；编辑器出厂设置会清除本地记忆、照片库、导入素材和工作台设置。每个选项都会要求确认。</p>
     <p><b>文件</b>：完整保存会把照片嵌入项目文件，文件较大但更可靠；轻量保存会压缩照片预览，文件较小，但最终生成印刷文件前应保留原照片文件夹并核对清晰度。</p>
     <p><b>实体书预览</b>：可查看合起、翻开、自动翻页和定时间隔；全屏按钮可进入沉浸预览，再点一次或按 Esc 可退出全屏。</p>
-    <p><b>输出</b>：可选择 PDF、PDF/X-1a、PDF/X-4 或单页 PNG；系统按当前开本输出，空白页提示和未编辑的文字模板示例不会进入印刷文件。</p>
+    <p><b>输出</b>：可选择 PDF、PDF/X-1a、PDF/X-4、单页 PNG 或全书 PNG（ZIP）；全书 PNG 会将每页 PNG 打包为 ZIP，文件可能较大。系统按当前开本输出，空白页提示和未编辑的文字模板示例不会进入印刷文件。</p>
     <p><b>记忆</b>：浏览器只自动记住语言、版式模式、工作台颜色、开本、照片库位置等轻量偏好；书页、照片、文字和导入素材请用“文件 > 保存文件”保存。</p>`;
   applyLayoutMode();
   if (book) renderPage();
-  // Refresh closed native select labels only after every option map has been
-  // written. The version guard prevents a queued prior-language repaint from
-  // restoring a stale label after a rapid language switch.
-  requestAnimationFrame(() => {
-    if (renderVersion !== languageRenderVersion) return;
-    [projectSaveModeSelect, pageSizeSelect, printFormatSelect, fontFamilySelect,
-      textTemplateSelect, bgScopeSelect, bgStyleSelect, resetScopeSelect,
-      photoShadowSelect, photoFrameSelect, drawModeSelect, brushTypeSelect,
-      autoLayoutScopeSelect, autoLayoutModeSelect, autoLayoutRandomFrameSelect,
-      autoLayoutRandomBgSelect, autoLayoutRandomTextSelect, layoutTemplateSelect]
-      .forEach(refreshNativeSelectLabel);
-  });
 }
 
 function applyLayoutMode() {
@@ -6009,8 +5991,12 @@ function positionTabletPopover(detail, body) {
   const trigger = detail.querySelector('summary');
   if (!trigger) return;
   const margin = 10;
-  const viewportWidth = window.innerWidth;
-  const viewportHeight = window.visualViewport ? window.visualViewport.height : window.innerHeight;
+  // clientWidth/clientHeight exclude the browser scrollbar. Using innerWidth
+  // here left a small but visible slice of right-aligned tablet panels outside
+  // portrait viewports.
+  const viewportWidth = document.documentElement.clientWidth || window.innerWidth;
+  const viewportHeight = document.documentElement.clientHeight
+    || (window.visualViewport ? window.visualViewport.height : window.innerHeight);
   const triggerRect = trigger.getBoundingClientRect();
 
   // First measure with a safe full-viewport bound, then anchor the panel to
@@ -8394,6 +8380,11 @@ async function outputPrintFile() {
     if (warning) hint.appendChild(document.createTextNode(' ' + warning));
     return;
   }
+  if (format === 'pngbook') {
+    await exportBookPngZip();
+    if (warning) hint.appendChild(document.createTextNode(' ' + warning));
+    return;
+  }
   buildPrintExport();
   await waitForImages(exportPages);
   await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
@@ -8653,39 +8644,103 @@ function offerExportDownload(url, filename, message) {
     } catch (err) {}
   }
 
+  async function renderPagePngBlob(page) {
+    const ratio = PAGE_RATIOS[book.pageSizeKey];
+    const sourceWidth = 900;
+    const sourceHeight = Math.round(sourceWidth / ratio);
+    const scale = 2;
+    const canvas = document.createElement('canvas');
+    canvas.width = sourceWidth * scale;
+    canvas.height = sourceHeight * scale;
+    const ctx = canvas.getContext('2d');
+    ctx.scale(scale, scale);
+    await drawCanvasBackground(ctx, page, sourceWidth, sourceHeight);
+    ctx.strokeStyle = 'rgba(92,72,52,.16)';
+    ctx.strokeRect(0, 0, sourceWidth, sourceHeight);
+    for (const obj of [...page.objects].sort((a, b) => a.zIndex - b.zIndex)) {
+      await drawCanvasPhoto(ctx, obj, sourceWidth, sourceHeight);
+    }
+    [...page.textBoxes].sort((a, b) => (a.zIndex || 20) - (b.zIndex || 20)).forEach(text => drawCanvasText(ctx, text, sourceWidth, sourceHeight));
+    if (page.type === 'content' && page.pageNumber) {
+      ctx.font = '10px Georgia, serif';
+      ctx.fillStyle = '#3f382f';
+      ctx.textAlign = 'center';
+      ctx.fillText(page.pageNumber, sourceWidth / 2, sourceHeight - 16);
+    }
+    await drawCanvasStudioLogo(ctx, page, sourceWidth, sourceHeight);
+    return new Promise((resolve, reject) => {
+      canvas.toBlob(blob => blob ? resolve(blob) : reject(new Error('PNG encoding failed')), 'image/png');
+    });
+  }
+
+  function crc32(bytes) {
+    let crc = 0xffffffff;
+    for (let i = 0; i < bytes.length; i += 1) {
+      crc ^= bytes[i];
+      for (let bit = 0; bit < 8; bit += 1) crc = (crc >>> 1) ^ (0xedb88320 & -(crc & 1));
+    }
+    return (crc ^ 0xffffffff) >>> 0;
+  }
+
+  function uint16(value) {
+    return new Uint8Array([value & 255, (value >>> 8) & 255]);
+  }
+
+  function uint32(value) {
+    return new Uint8Array([value & 255, (value >>> 8) & 255, (value >>> 16) & 255, (value >>> 24) & 255]);
+  }
+
+  function makeStoredZip(entries) {
+    const encoder = new TextEncoder();
+    const chunks = [];
+    const central = [];
+    let offset = 0;
+    entries.forEach(entry => {
+      const name = encoder.encode(entry.name);
+      const data = entry.data;
+      const crc = crc32(data);
+      const local = [uint32(0x04034b50), uint16(20), uint16(0x0800), uint16(0), uint16(0), uint16(0), uint32(crc), uint32(data.length), uint32(data.length), uint16(name.length), uint16(0), name, data];
+      chunks.push(...local);
+      central.push(uint32(0x02014b50), uint16(20), uint16(20), uint16(0x0800), uint16(0), uint16(0), uint16(0), uint32(crc), uint32(data.length), uint32(data.length), uint16(name.length), uint16(0), uint16(0), uint16(0), uint16(0), uint32(0), uint32(offset), name);
+      offset += local.reduce((sum, chunk) => sum + chunk.length, 0);
+    });
+    const centralSize = central.reduce((sum, chunk) => sum + chunk.length, 0);
+    chunks.push(...central, uint32(0x06054b50), uint16(0), uint16(0), uint16(entries.length), uint16(entries.length), uint32(centralSize), uint32(offset), uint16(0));
+    return new Blob(chunks, { type: 'application/zip' });
+  }
+
   async function exportCurrentPagePng() {
     try {
-      const page = book.pages[currentPageIdx];
-      const ratio = PAGE_RATIOS[book.pageSizeKey];
-      const sourceWidth = 900;
-      const sourceHeight = Math.round(sourceWidth / ratio);
-      const scale = 2;
-      const canvas = document.createElement('canvas');
-      canvas.width = sourceWidth * scale;
-      canvas.height = sourceHeight * scale;
-      const ctx = canvas.getContext('2d');
-      ctx.scale(scale, scale);
-      await drawCanvasBackground(ctx, page, sourceWidth, sourceHeight);
-      ctx.strokeStyle = 'rgba(92,72,52,.16)';
-      ctx.strokeRect(0, 0, sourceWidth, sourceHeight);
-      for (const obj of [...page.objects].sort((a, b) => a.zIndex - b.zIndex)) {
-        await drawCanvasPhoto(ctx, obj, sourceWidth, sourceHeight);
-      }
-      [...page.textBoxes].sort((a, b) => (a.zIndex || 20) - (b.zIndex || 20)).forEach(text => drawCanvasText(ctx, text, sourceWidth, sourceHeight));
-      if (page.type === 'content' && page.pageNumber) {
-        ctx.font = '10px Georgia, serif';
-        ctx.fillStyle = '#3f382f';
-        ctx.textAlign = 'center';
-        ctx.fillText(page.pageNumber, sourceWidth / 2, sourceHeight - 16);
-      }
-      await drawCanvasStudioLogo(ctx, page, sourceWidth, sourceHeight);
-      offerExportDownload(canvas.toDataURL('image/png'), `yearbook-page-${currentPageIdx + 1}.png`, [
+      const blob = await renderPagePngBlob(book.pages[currentPageIdx]);
+      offerExportDownload(URL.createObjectURL(blob), `yearbook-page-${currentPageIdx + 1}.png`, [
         lang() === 'en' ? 'Exported the current page as a PNG.' : '已导出当前页单页 PNG。',
         lightProjectPrintWarning(),
       ].filter(Boolean).join(' '));
     } catch (err) {
       console.error(err);
       hint.textContent = lang() === 'en' ? 'PNG export failed. Check whether all page images are still available.' : 'PNG 导出失败：请检查页面照片是否仍可读取。';
+    }
+  }
+
+  async function exportBookPngZip() {
+    try {
+      const entries = [];
+      for (let index = 0; index < book.pages.length; index += 1) {
+        hint.textContent = lang() === 'en'
+          ? `Preparing PNG ${index + 1} of ${book.pages.length}...`
+          : `正在生成第 ${index + 1}/${book.pages.length} 页 PNG...`;
+        const blob = await renderPagePngBlob(book.pages[index]);
+        entries.push({ name: `yearbook-page-${String(index + 1).padStart(3, '0')}.png`, data: new Uint8Array(await blob.arrayBuffer()) });
+        await new Promise(resolve => requestAnimationFrame(resolve));
+      }
+      const zip = makeStoredZip(entries);
+      offerExportDownload(URL.createObjectURL(zip), 'yearbook-full-book-png.zip', [
+        lang() === 'en' ? `Exported ${entries.length} page PNGs as a ZIP.` : `已将 ${entries.length} 页 PNG 打包为 ZIP。`,
+        lightProjectPrintWarning(),
+      ].filter(Boolean).join(' '));
+    } catch (err) {
+      console.error(err);
+      hint.textContent = lang() === 'en' ? 'Full-book PNG export failed. Check whether all page images are still available.' : '全书 PNG 输出失败：请检查页面照片是否仍可读取。';
     }
   }
 

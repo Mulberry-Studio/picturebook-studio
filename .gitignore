@@ -4,6 +4,10 @@
 !/.nojekyll
 !/README.md
 !/index.html
+!/editor.html
+!/assets/
+!/assets/fonts/
+!/assets/fonts/**
 !/.github/
 !/.github/workflows/
 !/.github/workflows/pages.yml
