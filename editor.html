@@ -2081,13 +2081,9 @@
     z-index: 3700 !important;
     overflow: auto !important;
   }
-  html[data-layout-mode="tablet"] .compact-toolbar.popover-active .toolbar-popover[open] .popover-body {
-    position: absolute !important;
-    top: calc(100% + 8px) !important;
-    left: 0 !important;
-    right: auto !important;
-    max-height: min(70dvh, 560px) !important;
-  }
+  /* Keep every tablet popover in the fixed positioning system above. An older
+     absolute override here made toolbar panels ignore their measured viewport
+     position, which also prevented Help and About from moving with their controls. */
   html[data-layout-mode="tablet"] .slot-controls { padding: 6px; gap: 5px; }
   html[data-layout-mode="tablet"] .slot-controls button {
     min-width: 32px;
@@ -3062,6 +3058,7 @@ let uiState = { ...DEFAULT_UI_STATE };
 let storageSaveTimer = null;
 let storageWarningShown = false;
 let pendingLocalPreferences = null;
+let languageRenderVersion = 0;
 const STORAGE_KEY = 'picturebookStudioStateV1';
 const TEMPLATE_PLACEHOLDER_TEXTS = new Set([
   'A Bright Day', 'small stories gathered here', 'PHOTO NOTES', 'A soft place for memory', 'Write a short note about this spread.',
@@ -3109,7 +3106,6 @@ function setOptionText(select, map) {
     const opt = select && select.querySelector(`option[value="${value}"]`);
     if (opt) opt.textContent = text;
   });
-  refreshNativeSelectLabel(select);
 }
 
 function replaceSelectOptionText(select, map) {
@@ -3135,15 +3131,6 @@ function refreshNativeSelectLabel(select) {
   void select.offsetWidth;
   select.value = selectedValue;
   if (selectedIndex >= 0) select.selectedIndex = selectedIndex;
-  // WebKit may paint the old closed-select label in the same frame as a
-  // language switch. A second, event-free restoration handles that cache.
-  requestAnimationFrame(() => {
-    if (!select.isConnected || select.value !== selectedValue) return;
-    select.selectedIndex = -1;
-    void select.offsetWidth;
-    select.value = selectedValue;
-    if (selectedIndex >= 0) select.selectedIndex = selectedIndex;
-  });
 }
 
 function syncPhotoEffectSelectLabels(expanded = false) {
@@ -3269,6 +3256,7 @@ function askAiAssistant(question = aiAssistantInput.value) {
 }
 
 function applyLanguage() {
+  const renderVersion = ++languageRenderVersion;
   document.documentElement.lang = lang() === 'en' ? 'en' : 'zh-CN';
   document.title = STUDIO_BRAND_NAME;
   languageSelect.value = lang();
@@ -3501,6 +3489,18 @@ function applyLanguage() {
     <p><b>记忆</b>：浏览器只自动记住语言、版式模式、工作台颜色、开本、照片库位置等轻量偏好；书页、照片、文字和导入素材请用“文件 > 保存文件”保存。</p>`;
   applyLayoutMode();
   if (book) renderPage();
+  // Refresh closed native select labels only after every option map has been
+  // written. The version guard prevents a queued prior-language repaint from
+  // restoring a stale label after a rapid language switch.
+  requestAnimationFrame(() => {
+    if (renderVersion !== languageRenderVersion) return;
+    [projectSaveModeSelect, pageSizeSelect, printFormatSelect, fontFamilySelect,
+      textTemplateSelect, bgScopeSelect, bgStyleSelect, resetScopeSelect,
+      photoShadowSelect, photoFrameSelect, drawModeSelect, brushTypeSelect,
+      autoLayoutScopeSelect, autoLayoutModeSelect, autoLayoutRandomFrameSelect,
+      autoLayoutRandomBgSelect, autoLayoutRandomTextSelect, layoutTemplateSelect]
+      .forEach(refreshNativeSelectLabel);
+  });
 }
 
 function applyLayoutMode() {
@@ -4983,6 +4983,18 @@ function renderTray() {
   photos.forEach(p => {
     const item = document.createElement('div');
     item.className = 'tray-item';
+    let touchStart = null;
+    let suppressClickUntil = 0;
+    const placeTouchPhoto = (e) => {
+      if (e.target.closest('.remove-btn')) return false;
+      const photo = photosById[p._id];
+      if (!photo) return false;
+      addPhotoToPage(book.pages[currentPageIdx], photo, 0.5, 0.5);
+      renderPage();
+      updateJsonView();
+      suppressClickUntil = Date.now() + 700;
+      return true;
+    };
     item.draggable = !usesTouchPhotoTray();
     item.addEventListener('dragstart', (e) => {
       if (usesTouchPhotoTray()) {
@@ -4992,17 +5004,30 @@ function renderTray() {
       e.dataTransfer.setData('text/plain', p._id);
       e.dataTransfer.effectAllowed = 'copy';
     });
-    item.addEventListener('click', (e) => {
-      if (e.target.closest('.remove-btn') || !usesTouchPhotoTray()) return;
+    item.addEventListener('pointerdown', (e) => {
+      if (!usesTouchPhotoTray() || e.pointerType === 'mouse' || e.target.closest('.remove-btn')) return;
+      touchStart = { pointerId: e.pointerId, x: e.clientX, y: e.clientY, moved: false };
+    });
+    item.addEventListener('pointermove', (e) => {
+      if (!touchStart || e.pointerId !== touchStart.pointerId) return;
+      if (Math.hypot(e.clientX - touchStart.x, e.clientY - touchStart.y) > 10) touchStart.moved = true;
+    });
+    item.addEventListener('pointercancel', () => { touchStart = null; });
+    item.addEventListener('pointerup', (e) => {
+      if (!touchStart || e.pointerId !== touchStart.pointerId) return;
+      const shouldPlace = !touchStart.moved;
+      touchStart = null;
+      if (!shouldPlace || !usesTouchPhotoTray()) return;
       e.preventDefault();
       e.stopPropagation();
-      // Resolve from the current library first. Android may deliver a delayed
-      // click after a short scroll, so never reuse a photo already detached.
-      const photo = photosById[p._id];
-      if (!photo) return;
-      addPhotoToPage(book.pages[currentPageIdx], photo, 0.5, 0.5);
-      renderPage();
-      updateJsonView();
+      placeTouchPhoto(e);
+    });
+    item.addEventListener('click', (e) => {
+      if (e.target.closest('.remove-btn') || !usesTouchPhotoTray()) return;
+      if (Date.now() < suppressClickUntil) return;
+      e.preventDefault();
+      e.stopPropagation();
+      placeTouchPhoto(e);
     });
     const img = document.createElement('img');
     img.src = p.url;
@@ -6007,14 +6032,18 @@ function positionTabletPopover(detail, body) {
   const above = triggerRect.top - margin - 8;
   const preferAbove = below < Math.min(250, bodyRect.height) && above > below;
   const availableHeight = Math.max(160, preferAbove ? above : below);
-  const top = preferAbove
+  const anchoredTop = preferAbove
     ? Math.max(margin, triggerRect.top - Math.min(bodyRect.height, availableHeight) - 8)
     : Math.min(viewportHeight - availableHeight - margin, triggerRect.bottom + 8);
+  // Help and About are long reading panels. Keep them 100px nearer the
+  // toolbar so their scrollable content starts in the user's working area.
+  const lift = detail.matches('.help-popover, .about-popover') ? 100 : 0;
+  const top = Math.max(margin, anchoredTop - lift);
   const left = Math.max(margin, Math.min(viewportWidth - width - margin, triggerRect.left));
 
   body.style.width = width + 'px';
   body.style.left = left + 'px';
-  body.style.top = Math.max(margin, top) + 'px';
+  body.style.top = top + 'px';
   body.style.maxHeight = availableHeight + 'px';
 }
 
